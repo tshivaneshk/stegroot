@@ -93,17 +93,11 @@ Each tool is carefully integrated into the analysis workflow to provide maximum 
 
 ### Post-Installation
 
-1. Add to PATH (optional):
+  Add to PATH (optional):
    ```bash
    echo 'export PATH="$PATH:'$(pwd)'"' >> ~/.bashrc
    source ~/.bashrc
    ```
-
-2. Verify all tools are accessible:
-   ```bash
-   ./stegtool.sh --check-deps
-   ```
-
 ## 📦 Installation Options
 
 ### Basic Installation (`--basic`)
@@ -315,165 +309,6 @@ outputs/
   - Bit plane analysis
   - Histogram analysis
 
-### 🎵 Audio Files
-
-#### Supported Formats
-- Lossy: MP3, AAC, OGG, WMA
-- Lossless: WAV, FLAC, ALAC, AIFF
-- Compressed: M4A, OPUS
-
-#### Audio Analysis Features
-- **Basic Analysis**
-  - File signature validation
-  - Header analysis
-  - Codec identification
-  - Duration verification
-
-- **Steganography Detection**
-  - LSB steganography
-  - Phase coding
-  - Spread spectrum
-  - Echo hiding
-  - Parity coding
-
-- **Advanced Analysis**
-  - Spectrogram analysis
-  - Frequency analysis
-  - Waveform analysis
-  - Audio fingerprinting
-  - Silent interval detection
-
-### 🎥 Video Files
-
-#### Supported Formats
-- Common: MP4, AVI, MKV, MOV, WMV, FLV
-- Raw: YUV, RGB
-- Container formats
-
-#### Video Analysis Features
-- **Basic Analysis**
-  - Container format analysis
-  - Codec identification
-  - Duration verification
-  - Resolution validation
-
-- **Frame Analysis**
-  - Keyframe extraction
-  - Frame differencing
-  - Motion analysis
-  - Scene change detection
-
-- **Steganography Detection**
-  - Frame-based steganography
-  - Motion vector steganography
-  - DCT coefficient analysis
-  - Inter-frame steganography
-
-### 📄 Document Files
-
-#### Supported Formats
-- Office: DOCX, XLSX, PPTX, ODT, ODS, ODP
-- PDF: PDF documents
-- Text: TXT, RTF, MD, JSON, XML
-- Archives: ZIP, RAR, 7Z, TAR, GZ
-
-#### Document Analysis Features
-- **Metadata Analysis**
-  - Document properties
-  - Author information
-  - Creation/modification dates
-  - Revision history
-
-- **Content Analysis**
-  - Hidden text detection
-  - Invisible layers
-  - Embedded objects
-  - Macro analysis
-
-- **Steganography Detection**
-  - Whitespace steganography
-  - Format-based steganography
-  - Hidden data in document properties
-  - OLE object analysis
-
-### 🔄 Other File Types
-
-#### Memory Dumps
-- Process memory analysis
-- String extraction
-- Memory carving
-- Registry analysis
-
-#### Network Captures
-- PCAP analysis
-- Protocol analysis
-- Payload extraction
-- Session reconstruction
-
-#### Disk Images
-- File system analysis
-- Deleted file recovery
-- Partition analysis
-- File carving
-
-## 🔍 Advanced Usage
-
-### Memory Forensics
-
-Analyze memory dumps for hidden processes and artifacts:
-```bash
-# Basic memory analysis
-./stegtool.sh memory_dump.raw
-
-# With specific memory profile
-./stegtool.sh --profile=Win10x64 memory_dump.raw
-
-# Extract specific artifacts
-./stegtool.sh --extract-processes memory_dump.raw
-```
-
-### Network Analysis
-
-Examine network captures for hidden data:
-```bash
-# Basic PCAP analysis
-./stegtool.sh network_capture.pcap
-
-# Extract files from network traffic
-./stegtool.sh --extract-files network_capture.pcap
-
-# Analyze specific protocols
-```
-
-### Automated Batch Processing
-
-Process multiple files with different options:
-
-```bash
-# Process all images with high security
-find /path/to/images -type f \( -name "*.jpg" -o -name "*.png" \) | \
-    xargs -I {} ./stegtool.sh -b -s paranoid {}
-
-# Process files listed in a text file (one per line)
-cat filelist.txt | xargs -I {} ./stegtool.sh -b {}
-```
-
-### Logging and Output Control
-
-```bash
-# Save output to a log file
-./stegtool.sh file.jpg 2>&1 | tee analysis.log
-
-# Disable progress bars for cleaner logs
-./stegtool.sh -np file.jpg > analysis_output.txt
-# Generate report
-./generate_report.sh analysis_results/
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report bugs, or suggest new features.
-
 ## 📜 License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
@@ -487,15 +322,8 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ## 📚 Additional Resources
 
 - [Steganography Techniques](https://en.wikipedia.org/wiki/Steganography)
-- [Digital Forensics Resources](https://www.digitalforensics.com/resources/)
 - [CTF Challenges](https://ctftime.org/)
 - [Security Tools Guide](https://tools.kali.org/)
-
-## 📝 Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a complete list of changes.
-
----
 
 ### Understanding Results
 
