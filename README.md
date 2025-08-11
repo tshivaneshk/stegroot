@@ -735,5 +735,3 @@ For issues, feature requests, or questions:
 1. Check the [Issues](https://github.com/sarveshvetrivel/stegroot/issues) page
 2. Create a new issue with a detailed description
 3. Follow the issue template guidelines
-#   s t e g r o o t  
- 
