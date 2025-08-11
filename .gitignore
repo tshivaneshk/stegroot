@@ -1,0 +1,32 @@
+# Output directory
+outputs/
+results/
+
+# Tool outputs
+**/foremost_output/
+*.extracted/
+_*/
+binwalk_output/
+stego_output/
+*.recovered
+
+# Temporary files
+*.tmp
+*~
+*.swp
+*.swo
+.*.swp
+.DS_Store
+
+# System files
+Thumbs.db
+.directory
+desktop.ini
+
+# Test files
+test.*
+testing/
+
+# Local environment
+.env
+.venv
