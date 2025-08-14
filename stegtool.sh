@@ -482,207 +482,167 @@ EOF
     fi
 }
 
-# Enhanced file analysis function with comprehensive error handling
-analyze_file() {
+run_basic_analysis() {
     local file="$1"
-    
-    # Validate file before analysis
-    if ! validate_file "$file"; then
-        log "ERROR" "File validation failed for: $file"
-        return 1
-    fi
-    
-    local mime_type
-    if ! mime_type=$(file --mime-type -b "$file" 2>/dev/null); then
-        log "ERROR" "Cannot determine MIME type for: $file"
-        return 1
-    fi
-    
-    local output_dir="${OUTPUT_DIR}"
-    
-    # Log analysis start
-    log "INFO" "Starting comprehensive analysis of: $file"
-    log "INFO" "MIME type detected: $mime_type"
-    log "INFO" "File size: $(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 'unknown') bytes"
-    
-    print_colored "$PURPLE" "\n🎯 Starting Comprehensive Analysis"
-    print_colored "$CYAN" "Target: $file"
-    print_colored "$CYAN" "Type: $mime_type"
-    
-    # Basic file analysis with error handling
     print_colored "$BLUE" "\n📊 Phase 1: Basic File Analysis"
     run_tool "file" "file -b '$file'" "Basic Analysis"
     run_tool "strings" "strings -n 8 -t x '$file'" "Basic Analysis" "strings"
     run_tool "strings-utf" "strings -n 8 -t x -el '$file'" "Basic Analysis" "strings"
     run_tool "xxd" "xxd -g 1 '$file' | head -n 100" "Basic Analysis" "xxd"
     run_tool "ent" "ent -t '$file'" "Basic Analysis" "ent"
-    
-    # Metadata analysis
+}
+
+run_metadata_analysis() {
+    local file="$1"
     print_colored "$BLUE" "\n📋 Phase 2: Metadata Analysis"
     run_tool "exiftool" "exiftool -a -u -g1 '$file'" "Metadata" "exiftool"
-    
-    # File carving with better error handling
+}
+
+run_file_carving() {
+    local file="$1"
     print_colored "$BLUE" "\n🔧 Phase 3: File Carving"
-    run_tool "binwalk" "binwalk -BEP '$file'" "Extracted" "binwalk"  # Removed -e flag that was causing issues
-    
-    # Image-specific analysis
+    run_tool "binwalk" "binwalk -BEP '$file'" "Extracted" "binwalk"
+}
+
+run_image_analysis() {
+    local file="$1"
+    local mime_type="$2"
+    local output_dir="${OUTPUT_DIR}"
+
     if [[ $mime_type == image/* ]]; then
-        print_colored "$BLUE" "\n🖼️  Phase 4: Image-Specific Analysis"
-        
-        # Basic image analysis
+        print_colored "$BLUE" "\n🖼️ Phase 4: Image-Specific Analysis"
+
         run_tool "identify" "identify -verbose '$file'" "Image Analysis" "identify"
         run_tool "steghide" "timeout 30 steghide info '$file' <<< '' 2>/dev/null || echo 'No steganography detected or requires passphrase'" "Steganography" "steghide"
-        
-        # Advanced metadata analysis
+
         if command -v "exiv2" &> /dev/null; then
             run_tool "exiv2" "exiv2 -pa '$file'" "Metadata" "exiv2"
         fi
         if command -v "mat2" &> /dev/null; then
             run_tool "mat2" "mat2 --show '$file'" "Metadata" "mat2"
         fi
-        
-        # Comprehensive stego analysis
         if command -v "stegoveritas" &> /dev/null; then
             safe_mkdir "${output_dir}/stegoveritas"
             run_tool "stegoveritas" "stegoveritas -out '${output_dir}/stegoveritas' '$file'" "Steganography" "stegoveritas"
         fi
-        
-        # Advanced stego detection
         if command -v "stegdetect" &> /dev/null; then
             run_tool "stegdetect" "stegdetect -t all '$file'" "Steganography" "stegdetect"
         fi
-        
-        # ImageMagick operations (fixed tool checking)
+
         if command -v "convert" &> /dev/null; then
             print_colored "$BLUE" "\n🎨 Phase 5: Image Processing"
-            
-            # Create different color channels
             safe_mkdir "${output_dir}/channels"
             run_tool "channels" "convert '$file' -separate '${output_dir}/channels/channel_%d.png'" "Image Analysis" "convert"
-            
-            # Extract alpha channel if present
             run_tool "alpha" "convert '$file' -alpha extract '${output_dir}/alpha_channel.png' 2>/dev/null || echo 'No alpha channel found'" "Image Analysis" "convert"
-            
-            # Create inverted image
             run_tool "invert" "convert '$file' -negate '${output_dir}/inverted.png'" "Image Analysis" "convert"
-            
-            # Generate bit planes with error handling
             for i in {0..7}; do
                 run_tool "bitplane_$i" "convert '$file' -depth 8 -channel R -threshold $((i * 12))% '${output_dir}/bitplane_$i.png' 2>/dev/null || echo 'Bitplane extraction failed for level $i'" "Image Analysis" "convert"
             done
         else
             log "WARN" "ImageMagick 'convert' not available - skipping image processing"
         fi
-        
-        # Advanced recovery
+
         if command -v "photorec" &> /dev/null; then
             safe_mkdir "${output_dir}/photorec"
             run_tool "photorec" "photorec /d '${output_dir}/photorec' /cmd '$file' search" "Extracted" "photorec"
         fi
-        
-        # Format-specific analysis
+
         print_colored "$BLUE" "\n🔍 Phase 6: Format-Specific Analysis"
         case $mime_type in
             *"png"*)
                 run_tool "pngcheck" "pngcheck -vtp7f '$file'" "Image Analysis" "pngcheck"
                 run_tool "zsteg" "zsteg -a '$file'" "Steganography" "zsteg"
-                # Check for IDAT chunks
                 run_tool "png_chunks" "hexdump -C '$file' | grep -A 2 'IDAT\|IEND\|PLTE' | head -20" "Image Analysis" "hexdump"
                 ;;
-                
             *"jpeg"*|*"jpg"*)
                 run_tool "jpeginfo" "jpeginfo -c '$file'" "Image Analysis" "jpeginfo"
                 run_tool "outguess" "outguess -r '$file' '${output_dir}/outguess_extracted.txt' 2>/dev/null || echo 'No hidden data found with outguess'" "Steganography" "outguess"
-                # Extract thumbnails
                 run_tool "exiftool_thumb" "exiftool -b -ThumbnailImage '$file' > '${output_dir}/thumbnail.jpg' 2>/dev/null || echo 'No thumbnail found'" "Image Analysis" "exiftool"
                 ;;
-                
             *"gif"*)
                 if command -v "convert" &> /dev/null; then
-                    # Extract all frames
                     run_tool "gif_frames" "convert '$file' '${output_dir}/frame_%03d.png'" "Image Analysis" "convert"
                     run_tool "gif_info" "identify -format '%f[%s] Canvas=%Wx%H Offset=%X%Y Disposal=%d Delay=%T\n' '$file'" "Image Analysis" "identify"
                 fi
                 ;;
-                
             *"bmp"*)
                 if command -v "stegseek" &> /dev/null; then
                     run_tool "stegseek" "stegseek --crack '$file' /usr/share/wordlists/rockyou.txt -f '${output_dir}/stegseek_output.txt' 2>/dev/null || echo 'No steganography found with stegseek'" "Steganography" "stegseek"
                 fi
                 ;;
         esac
-        
-        # OCR analysis
+
         run_tool "tesseract" "tesseract '$file' '${output_dir}/ocr_output' -l eng 2>/dev/null || echo 'OCR analysis failed'" "Image Analysis" "tesseract"
     fi
-    
-    # Audio/Video analysis
+}
+
+run_media_analysis() {
+    local file="$1"
+    local mime_type="$2"
+    local output_dir="${OUTPUT_DIR}"
+
     if [[ $mime_type == audio/* || $mime_type == video/* ]]; then
         print_colored "$BLUE" "\n🎵 Phase 4: Audio/Video Analysis"
-        
-        # Basic media info
+
         run_tool "ffmpeg" "ffmpeg -i '$file' -f null - 2>&1 | head -50" "Audio Analysis" "ffmpeg"
-        
-        # Advanced media analysis
         if command -v "mediainfo" &> /dev/null; then
             run_tool "mediainfo" "mediainfo --Full '$file'" "Audio Analysis" "mediainfo"
         fi
         if command -v "hachoir-metadata" &> /dev/null; then
             run_tool "hachoir" "hachoir-metadata '$file'" "Metadata" "hachoir-metadata"
         fi
-        
+
         if [[ $mime_type == audio/* ]]; then
-            # Audio-specific analysis
             safe_mkdir "${output_dir}/audio"
-            
-            # Generate spectrograms
             if command -v "sox" &> /dev/null; then
                 run_tool "spectrogram" "sox '$file' -n spectrogram -o '${output_dir}/audio/spectrogram.png' 2>/dev/null || echo 'Spectrogram generation failed'" "Audio Analysis" "sox"
             fi
-            
-            # Extract audio steganography
             if command -v "wavsteg" &> /dev/null; then
                 run_tool "wavsteg" "wavsteg -r -s '$file' -o '${output_dir}/audio/wavsteg_output.txt' 2>/dev/null || echo 'No steganography found'" "Steganography" "wavsteg"
             fi
             run_tool "audio_steghide" "steghide extract -sf '$file' -p '' -xf '${output_dir}/audio/steghide_output.txt' 2>/dev/null || echo 'No steganography found or wrong passphrase'" "Steganography" "steghide"
-            
-            # Generate waveform
             run_tool "waveform" "ffmpeg -i '$file' -filter_complex 'showwavespic=s=1000x200' -frames:v 1 '${output_dir}/audio/waveform.png' -y 2>/dev/null || echo 'Waveform generation failed'" "Audio Analysis" "ffmpeg"
         fi
-        
+
         if [[ $mime_type == video/* ]]; then
-            # Video-specific analysis
             safe_mkdir "${output_dir}/video/frames"
-            
-            # Extract frames (limited to first 10 to avoid flooding)
             run_tool "extract_frames" "ffmpeg -i '$file' -vf 'select=lt(n\,10)' '${output_dir}/video/frames/frame_%04d.png' -y 2>/dev/null || echo 'Frame extraction failed'" "Video Analysis" "ffmpeg"
-            
-            # Extract audio stream
             run_tool "extract_audio" "ffmpeg -i '$file' -vn -acodec copy '${output_dir}/video/audio.wav' -y 2>/dev/null || echo 'Audio extraction failed'" "Video Analysis" "ffmpeg"
-            
-            # Generate video metadata
             run_tool "video_meta" "ffprobe -v quiet -print_format json -show_format -show_streams '$file'" "Video Analysis" "ffprobe"
-            
-            # Check for subtitles
             run_tool "subtitles" "ffmpeg -i '$file' -map 0:s:0 '${output_dir}/video/subtitles.srt' -y 2>/dev/null || echo 'No subtitles found'" "Video Analysis" "ffmpeg"
         fi
     fi
-    
-    # Advanced file carving
-    print_colored "$BLUE" "\n⚒️  Phase 7: Advanced File Carving"
+}
+
+run_advanced_carving() {
+    local file="$1"
+    print_colored "$BLUE" "\n⚒️ Phase 7: Advanced File Carving"
     if command -v "foremost" &> /dev/null; then
-        run_tool "foremost" "foremost -v -t all -i '$file' -o '${output_dir}/foremost_output'" "Extracted" "foremost"
+        run_tool "foremost" "foremost -v -t all -i '$file' -o '${OUTPUT_DIR}/foremost_output'" "Extracted" "foremost"
     fi
     if command -v "scalpel" &> /dev/null; then
-        run_tool "scalpel" "scalpel '$file' -o '${output_dir}/scalpel_output'" "Extracted" "scalpel"
+        run_tool "scalpel" "scalpel '$file' -o '${OUTPUT_DIR}/scalpel_output'" "Extracted" "scalpel"
     fi
-    
-    # Generate final summary
-    generate_summary "$file" "$mime_type"
-    
-    log "INFO" "Analysis complete. Results saved in: $OUTPUT_DIR"
-    return 0
 }
+
+
+analyze_file() {
+    local file="$1"
+
+    if ! validate_file "$file"; then return 1; fi
+    local mime_type
+    if ! mime_type=$(file --mime-type -b "$file" 2>/dev/null); then return 1; fi
+
+    run_basic_analysis "$file"
+    run_metadata_analysis "$file"
+    run_file_carving "$file"
+    run_image_analysis "$file" "$mime_type"
+    run_media_analysis "$file" "$mime_type"
+    run_advanced_carving "$file"
+
+    generate_summary "$file" "$mime_type"
+}
+
 
 # Function to generate analysis summary
 generate_summary() {
@@ -841,6 +801,59 @@ handle_interrupt() {
     fi
 }
 
+interactive_menu() {
+    local file="$1"
+    
+    # Detect MIME type once for later use
+    local mime_type
+    mime_type=$(file --mime-type -b "$file" 2>/dev/null)
+    
+    while true; do
+        echo
+        print_colored "$PURPLE" "===== Interactive Analysis Menu ====="
+        echo "1) Basic File Analysis"
+        echo "2) Metadata Analysis"
+        echo "3) File Carving"
+        echo "4) Image-Specific Analysis"
+        echo "5) Audio/Video Analysis"
+        echo "6) Advanced File Carving"
+        echo "7) Run All Phases"
+        echo "8) View Analysis Summary"
+        echo "9) Exit Interactive Mode"
+        
+        read -p "Select an option: " choice
+        
+        case "$choice" in
+            1) run_basic_analysis "$file" ;;
+            2) run_metadata_analysis "$file" ;;
+            3) run_file_carving "$file" ;;
+            4) run_image_analysis "$file" "$mime_type" ;;
+            5) run_media_analysis "$file" "$mime_type" ;;
+            6) run_advanced_carving "$file" ;;
+            7) 
+                analyze_file "$file"
+                if [ -f "${OUTPUT_DIR}/analysis_summary.txt" ]; then
+                    print_colored "$GREEN" "\n📊 Analysis Summary:"
+                    less "${OUTPUT_DIR}/analysis_summary.txt"
+                else
+                    print_colored "$YELLOW" "No summary found."
+                fi
+                ;;
+            8) 
+                if [ -f "${OUTPUT_DIR}/analysis_summary.txt" ]; then
+                    less "${OUTPUT_DIR}/analysis_summary.txt"
+                else
+                    print_colored "$YELLOW" "No summary found. Run an analysis phase first."
+                fi
+                ;;
+            9) break ;;
+            *) print_colored "$YELLOW" "Invalid choice. Try again." ;;
+        esac
+    done
+}
+
+
+
 # Enhanced main function with better error handling
 main() {
     # Parse command line arguments
@@ -928,48 +941,53 @@ main() {
         }
         
         # Perform analysis
-        if analyze_file "$target_file"; then
-            print_colored "$GREEN" "\n🎉 Analysis Complete!"
-            print_colored "$GREEN" "📁 Results saved in: $OUTPUT_DIR"
-            print_colored "$CYAN" "📊 Summary: $ERRORS_COUNT errors, $WARNINGS_COUNT warnings"
-            
-            # Show important files
-            echo
-            print_colored "$BLUE" "📋 Key Output Files:"
-            echo "   📄 Full log: ${OUTPUT_DIR}/analysis_log.txt"
-            echo "   📋 Summary: ${OUTPUT_DIR}/analysis_summary.txt"
-            if [ -d "${OUTPUT_DIR}/Steganography" ]; then
-                echo "   🔍 Steganography: ${OUTPUT_DIR}/Steganography/"
-            fi
-            if [ -d "${OUTPUT_DIR}/Extracted" ]; then
-                echo "   📦 Extracted: ${OUTPUT_DIR}/Extracted/"
-            fi
-            
-            # Handle steganography password attempts if needed
-            if [ -d "${OUTPUT_DIR}/Steganography" ] && [ "$INTERACTIVE" = true ]; then
-                local stego_files=$(find "${OUTPUT_DIR}/Steganography" -type f -name "*_output.txt" -exec grep -l "passphrase\|password required" {} \;)
-                if [ -n "$stego_files" ]; then
-                    print_colored "$YELLOW" "\n🔐 Steganography content requiring password detected"
-                    read -p "Would you like to attempt password extraction? (y/n): " try_pass
-                    if [[ "$try_pass" =~ ^[Yy]$ ]]; then
-                        for tool in "steghide" "outguess"; do
-                            try_passwords "$target_file" "$tool"
-                        done
+        if [ "$INTERACTIVE" = true ]; then
+            interactive_menu "$target_file"
+        else
+            if analyze_file "$target_file"; then
+                print_colored "$GREEN" "\n🎉 Analysis Complete!"
+                print_colored "$GREEN" "📁 Results saved in: $OUTPUT_DIR"
+                print_colored "$CYAN" "📊 Summary: $ERRORS_COUNT errors, $WARNINGS_COUNT warnings"
+                
+                # Show important files
+                echo
+                print_colored "$BLUE" "📋 Key Output Files:"
+                echo "   📄 Full log: ${OUTPUT_DIR}/analysis_log.txt"
+                echo "   📋 Summary: ${OUTPUT_DIR}/analysis_summary.txt"
+                if [ -d "${OUTPUT_DIR}/Steganography" ]; then
+                    echo "   🔍 Steganography: ${OUTPUT_DIR}/Steganography/"
+                fi
+                if [ -d "${OUTPUT_DIR}/Extracted" ]; then
+                    echo "   📦 Extracted: ${OUTPUT_DIR}/Extracted/"
+                fi
+                
+                # Handle steganography password attempts if needed
+                if [ -d "${OUTPUT_DIR}/Steganography" ] && [ "$INTERACTIVE" = true ]; then
+                    stego_files=$(find "${OUTPUT_DIR}/Steganography" -type f -name "*_output.txt" -exec grep -l "passphrase\|password required" {} \;)
+                    if [ -n "$stego_files" ]; then
+                        print_colored "$YELLOW" "\n🔐 Steganography content requiring password detected"
+                        read -p "Would you like to attempt password extraction? (y/n): " try_pass
+                        if [[ "$try_pass" =~ ^[Yy]$ ]]; then
+                            for tool in "steghide" "outguess"; do
+                                try_passwords "$target_file" "$tool"
+                            done
+                        fi
                     fi
                 fi
-            fi
-        else
-            print_colored "$RED" "❌ Analysis failed!"
-            if [ "$BATCH_MODE" = false ]; then
-                exit 1
+
+            else
+                print_colored "$RED" "❌ Analysis failed!"
+                if [ "$BATCH_MODE" = false ]; then
+                    exit 1
+                fi
             fi
         fi
+
+        if [ "$BATCH_MODE" = true ]; then
+            print_colored "$GREEN" "\n📋 Batch processing complete!"
+            print_colored "$CYAN" "Total files processed: $#"
+        fi
     done
-    
-    if [ "$BATCH_MODE" = true ]; then
-        print_colored "$GREEN" "\n📋 Batch processing complete!"
-        print_colored "$CYAN" "Total files processed: $#"
-    fi
 }
 
 # Cleanup function
@@ -980,4 +998,3 @@ cleanup() {
 
 # Execute main function with all arguments
 main "$@"
-

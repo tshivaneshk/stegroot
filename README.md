@@ -229,8 +229,40 @@ In interactive mode, the tool will:
 2. Show real-time progress and results
 3. Allow you to skip or retry analysis steps
 4. Provide contextual help when needed
+5. Dynamically adjust options based on file type and installed tools (**Smart Mode**)
+6. Let you view results at any time without exiting
 
-When the analysis is complete, you'll be given options to:
+**New Enhancements:**
+
+- **Phase-Based Execution** – Run specific phases individually:
+  - Basic File Analysis
+  - Metadata Analysis
+  - File Carving
+  - Image-Specific Analysis
+  - Audio/Video Analysis
+  - Advanced File Carving
+- **Run All Phases with Auto-Summary** – When you choose “Run All Phases,” the tool:
+  - Executes the complete `analyze_file` pipeline
+  - Immediately shows the generated `analysis_summary.txt` for quick review
+- **On-Demand Summary View** – Check results mid-session without restarting
+- **Smart Tool Detection** – Hides irrelevant options for your file type and installed tools
+- **No Restart Needed** – Skip, repeat, or run different phases in one session
+
+**Example Menu:**
+```
+===== Interactive Analysis Menu =====
+1) Basic File Analysis
+2) Metadata Analysis
+3) File Carving
+4) Image-Specific Analysis
+5) Audio/Video Analysis
+6) Advanced File Carving
+7) Run All Phases
+8) View Analysis Summary
+9) Exit Interactive Mode
+```
+
+When the analysis is complete, you’ll be given options to:
 - View the full analysis log
 - Open the output directory
 - Try additional analysis steps
