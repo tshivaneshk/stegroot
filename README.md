@@ -10,7 +10,7 @@ A comprehensive command-line utility for steganography analysis, data extraction
 - **Automated Workflow**: Automated analysis pipeline with detailed reporting
 - **Modular Design**: Easy to extend with new analysis modules
 - **Cross-Platform**: Works on Linux and macOS (with some limitations on Windows through WSL)
-- **Security-Focused**: Built with security best practices and safe execution in mind
+- **Security-Focused**: Built with security best practices and safe execution in mind.
 
 ## Core Capabilities
 
